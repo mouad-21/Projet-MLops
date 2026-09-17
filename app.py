@@ -8,11 +8,11 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "src"))
-from config import load_config  # noqa: E402
+from config import load_config, get_tracking_uri  # noqa: E402
 
 CONFIG_PATH = "configs/config.yaml"
 cfg = load_config(CONFIG_PATH)
-mlflow.set_tracking_uri(cfg.mlflow.tracking_uri)
+mlflow.set_tracking_uri(get_tracking_uri(cfg))
 
 app = FastAPI(title="Credit Card Fraud Detection API")
 

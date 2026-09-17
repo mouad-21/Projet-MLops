@@ -1,4 +1,5 @@
 """Chargement de la configuration YAML en objet Python typé."""
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 import yaml
@@ -59,3 +60,10 @@ def load_config(path: str = "configs/config.yaml") -> Config:
         cv=CVConfig(**raw["cv"]),
         mlflow=MLflowConfig(**raw["mlflow"]),
     )
+
+
+def get_tracking_uri(cfg: Config) -> str:
+    """MLFLOW_TRACKING_URI (variable d'environnement) prend le pas sur la config.
+    Utile pour le conteneur Docker, qui doit joindre le serveur MLflow via
+    'http://host.docker.internal:5000' plutot que 'http://127.0.0.1:5000'."""
+    return os.environ.get("MLFLOW_TRACKING_URI", cfg.mlflow.tracking_uri)

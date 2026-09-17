@@ -1,19 +1,23 @@
 """Entraine le pipeline avec GridSearchCV, tracke tout dans MLflow (autolog),
 et enregistre le meilleur modele dans le Model Registry."""
 import argparse
+import sys
+
+if sys.stdout.encoding != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8")  # evite un crash sur les logs MLflow contenant des emojis (Windows/cp1252)
 
 import mlflow
 import mlflow.sklearn
 from mlflow.tracking import MlflowClient
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
 
-from config import load_config
+from config import load_config, get_tracking_uri
 from pipeline import build_pipeline
 from preprocess import load_raw, split_data
 
 
 def main(cfg) -> None:
-    mlflow.set_tracking_uri(cfg.mlflow.tracking_uri)
+    mlflow.set_tracking_uri(get_tracking_uri(cfg))
     mlflow.set_experiment(cfg.mlflow.experiment_name)
     mlflow.sklearn.autolog(log_models=False, max_tuning_runs=5)  # on logge le modele nous-memes (voir plus bas)
 

@@ -29,7 +29,10 @@ cv:
   scoring: "average_precision" # adapte au fort desequilibre de classes (0.17% de fraude)
 
 mlflow:
-  tracking_uri: "sqlite:///mlflow.db"
-  experiment_name: "credit-card-fraud"
+  # Serveur MLflow local (voir `make mlflow-server`). On passe par un vrai serveur
+  # HTTP (pas un acces direct au fichier sqlite) pour que le conteneur Docker
+  # puisse aussi lire le registry sans souci de chemins absolus Windows/Linux.
+  tracking_uri: "http://127.0.0.1:5000"
+  experiment_name: "credit-card-fraud-v2" # cree via le serveur MLflow -> artefacts proxifies (portables Docker)
   registered_model_name: "CreditCardFraudClassifier"
   promote_stage: "Production"

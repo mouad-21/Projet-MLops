@@ -67,23 +67,30 @@ PCA, pour anonymiser les données originales) + `Amount`. Cible : `Class`
   Regression, Random Forest) pour compenser le déséquilibre sans sur-échantillonner.
 - **Split stratifié** (`stratify=y`) pour garder la même proportion de fraude
   dans train et test.
-- **MLflow backend SQLite** (`sqlite:///mlflow.db`) : tracking + registry
-  complets, 100% local, aucun serveur à lancer.
+- **Serveur MLflow local** (`mlflow server --backend-store-uri sqlite:///mlflow.db
+  --default-artifact-root ./mlruns`) : tracking + registry complets, 100% local
+  (aucun cloud), mais accessible en HTTP — indispensable pour que l'API dans le
+  conteneur Docker puisse aussi lire le registry (voir "Notes techniques" plus bas).
 
 ## Installation et exécution
 
+**Le serveur MLflow doit tourner AVANT `train`/`evaluate`/`run`/le conteneur Docker**
+(les scripts s'y connectent en HTTP, `http://127.0.0.1:5000` par defaut) :
+
 ```bash
-make init                 # cree .venv et installe requirements.txt
-source .venv/bin/activate # (ou .venv\Scripts\activate sous Windows)
+make init                  # cree .venv et installe requirements.txt
+source .venv/bin/activate  # (ou .venv\Scripts\activate sous Windows)
 
-make get-data              # telecharge le dataset dans data/raw.csv
-make train                 # GridSearchCV + tracking MLflow + enregistrement du meilleur modele
-make evaluate               # charge le modele "Production" depuis le registry, evalue sur le test set
-make test                   # tests unitaires (pytest)
+make mlflow-server          # DANS UN TERMINAL A PART, le laisser tourner. UI sur http://localhost:5000
 
-make mlflow-ui               # lance l'UI MLflow sur http://localhost:5000
-make run                      # lance l'API FastAPI sur http://localhost:8000
-make build                     # construit l'image Docker
+make get-data               # telecharge le dataset dans data/raw.csv
+make train                  # GridSearchCV + tracking MLflow + enregistrement du meilleur modele
+make evaluate                # charge le modele "Production" depuis le registry, evalue sur le test set
+make test                     # tests unitaires (pytest)
+
+make run                       # lance l'API FastAPI sur http://localhost:8000
+make build                      # construit l'image Docker
+make docker-run                  # lance l'API dans un conteneur, sur http://localhost:8000
 ```
 
 ### Tester l'API
@@ -97,6 +104,27 @@ curl -X POST http://localhost:8000/predict \
 ```
 
 Réponse : `{"prediction": 0, "label": "legitimate"}` ou `{"prediction": 1, "label": "fraud"}`.
+
+## Notes techniques (pièges rencontrés et corrigés)
+
+- **Pourquoi un vrai serveur MLflow, et pas juste `sqlite:///mlflow.db` en accès
+  direct ?** En accès direct, MLflow enregistre le chemin d'artefact comme un
+  **chemin absolu de la machine qui a entraîné le modèle**
+  (`file:C:/Users/.../mlruns/...`). Ça fonctionne tant qu'on reste sur la même
+  machine, mais le conteneur Docker (Linux) ne peut pas résoudre un chemin
+  Windows. Passer par un vrai `mlflow server` fait que c'est le **serveur** qui
+  lit les fichiers localement et sert les octets via HTTP — le client (conteneur
+  ou hôte) n'a plus besoin d'interpréter le chemin lui-même.
+- **`host.docker.internal` vs IP privée** : MLflow embarque une protection
+  anti-DNS-rebinding qui, par défaut, n'autorise que les IP privées standards
+  (`192.168.*`, `10.*`, `172.16-31.*`) dans l'en-tête `Host`, pas les noms
+  d'hôte personnalisés comme `host.docker.internal`. Le `Dockerfile` utilise donc
+  directement l'IP de la passerelle Docker Desktop (`192.168.65.254`) — à adapter
+  si elle diffère sur ta machine (`docker run ... -e MLFLOW_TRACKING_URI=http://<ip>:5000`).
+- **Emoji dans les logs MLflow** : sur certaines consoles Windows (encodage
+  cp1252), MLflow peut planter en essayant d'afficher un emoji (🏃) dans ses
+  messages de log. Corrigé en forçant `sys.stdout` en UTF-8 en tête de
+  `train.py`/`evaluate.py`.
 
 ## Résultats
 

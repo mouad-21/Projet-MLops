@@ -1,6 +1,10 @@
 """Charge le modele PROMU depuis le MLflow Model Registry (pas depuis la memoire !)
 et l'evalue sur le jeu de test tenu a l'ecart. Logge metriques + plots dans un nouveau run."""
 import argparse
+import sys
+
+if sys.stdout.encoding != "utf-8":
+    sys.stdout.reconfigure(encoding="utf-8")  # evite un crash sur les logs MLflow contenant des emojis (Windows/cp1252)
 
 import mlflow
 from sklearn.metrics import (
@@ -12,7 +16,7 @@ from sklearn.metrics import (
     roc_auc_score,
 )
 
-from config import load_config
+from config import load_config, get_tracking_uri
 from preprocess import load_raw, split_data
 from utils import plot_confusion_matrix, plot_pr_curve, plot_roc_curve
 
@@ -29,7 +33,7 @@ def load_production_model(cfg):
 
 
 def main(cfg) -> None:
-    mlflow.set_tracking_uri(cfg.mlflow.tracking_uri)
+    mlflow.set_tracking_uri(get_tracking_uri(cfg))
     mlflow.set_experiment(cfg.mlflow.experiment_name)
 
     df = load_raw(cfg)

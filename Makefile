@@ -20,10 +20,13 @@ test:
 run:
 	uvicorn app:app --host 0.0.0.0 --port 8000 --reload
 
-mlflow-ui:
-	mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5000
+mlflow-server:
+	mlflow server --backend-store-uri sqlite:///mlflow.db --default-artifact-root ./mlruns --host 0.0.0.0 --port 5000
 
 build:
 	docker build -t credit-fraud-mlops:latest .
 
-.PHONY: init get-data train evaluate test run mlflow-ui build
+docker-run:
+	docker run -d --name credit-fraud-api -p 8000:8000 credit-fraud-mlops:latest
+
+.PHONY: init get-data train evaluate test run mlflow-server build docker-run
